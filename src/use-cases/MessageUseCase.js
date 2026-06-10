@@ -8,6 +8,10 @@ class MessageUseCase {
     this.clients = new Map()
   }
 
+  isRegistered(ws) {
+    return this.clients.has(ws)
+  }
+
   async registerClient(ws, username) {
     const user = { id: uuidv4(), username, connectedAt: new Date().toISOString() }
     this.clients.set(ws, user)
@@ -24,17 +28,14 @@ class MessageUseCase {
     return client
   }
 
-  async buildMessage(ws, rawData) {
+  async buildMessage(ws, content) {
     const client = this.clients.get(ws)
     if (!client) throw new Error('Cliente no registrado')
-
-    const parsed = JSON.parse(rawData)
-    if (!parsed.content?.trim()) throw new Error('El contenido no puede estar vacío')
 
     const message = new Message({
       userId: client.id,
       username: client.username,
-      content: parsed.content.trim(),
+      content,
     })
 
     await this.messageRepository.save(message)

@@ -185,7 +185,7 @@
 
   <div class="connect-section">
     <input type="text" id="username" placeholder="Tu nombre de usuario" maxlength="40" />
-    <input type="text" id="wsUrl" value="ws://localhost:3000/chat" style="max-width:200px;" />
+    <input type="text" id="wsUrl" value="ws://54.163.40.233:3000/chat" style="max-width:200px;" />
     <button class="primary" id="btn-connect">Conectar</button>
     <button class="danger" id="btn-disconnect" style="display:none;">Salir</button>
   </div>
@@ -255,7 +255,7 @@
     myUsername = username
     setStatus('connecting')
 
-    ws = new WebSocket(`${url}?username=${encodeURIComponent(username)}`)
+    ws = new WebSocket(url)
 
     ws.onopen = () => {
       setStatus('connected')
@@ -312,7 +312,7 @@
   function sendMessage() {
     const content = msgInput.value.trim()
     if (!content || !ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send(JSON.stringify({ content }))
+    ws.send(JSON.stringify({ username: myUsername, content }))
     msgInput.value = ''
     msgInput.focus()
   }

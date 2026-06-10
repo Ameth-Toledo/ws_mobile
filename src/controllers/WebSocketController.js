@@ -5,24 +5,8 @@ class WebSocketController {
     this.messageUseCase = messageUseCase
   }
 
-  async handleConnection(ws, req) {
-    const url = new URL(req.url, `http://${req.headers.host}`)
-    const username = url.searchParams.get('username')?.trim()
-
-    if (!username) {
-      ws.send(JSON.stringify({ type: 'error', content: 'Se requiere ?username=' }))
-      ws.close()
-      return
-    }
-
-    await this.messageUseCase.registerClient(ws, username)
-    console.log(`[+] Conectado: ${username}`)
-
-    const history = await this.messageUseCase.getHistory()
-    ws.send(JSON.stringify({ type: 'history', messages: history }))
-
-    const joinMsg = Message.systemMessage(`${username} se unió al chat`)
-    this.messageUseCase.broadcast(joinMsg)
+  handleConnection(ws, req) {
+    console.log('[+] Nueva conexión entrante')
 
     ws.on('message', (data) => this.handleMessage(ws, data))
     ws.on('close', () => this.handleDisconnect(ws))
@@ -31,8 +15,32 @@ class WebSocketController {
 
   async handleMessage(ws, data) {
     try {
-      const message = await this.messageUseCase.buildMessage(ws, data)
+      const parsed = JSON.parse(data)
+
+      if (!parsed.username || !parsed.username.trim()) {
+        ws.send(JSON.stringify({ type: 'error', content: 'El campo username es requerido' }))
+        return
+      }
+
+      if (!parsed.content || !parsed.content.trim()) {
+        ws.send(JSON.stringify({ type: 'error', content: 'El campo content es requerido' }))
+        return
+      }
+
+      const isNew = !this.messageUseCase.isRegistered(ws)
+
+      if (isNew) {
+        await this.messageUseCase.registerClient(ws, parsed.username.trim())
+        const history = await this.messageUseCase.getHistory()
+        ws.send(JSON.stringify({ type: 'history', messages: history }))
+        const joinMsg = Message.systemMessage(`${parsed.username.trim()} se unió al chat`)
+        this.messageUseCase.broadcast(joinMsg)
+        console.log(`[+] Registrado: ${parsed.username.trim()}`)
+      }
+
+      const message = await this.messageUseCase.buildMessage(ws, parsed.content.trim())
       this.messageUseCase.broadcast(message)
+
     } catch (err) {
       ws.send(JSON.stringify({ type: 'error', content: err.message }))
     }
